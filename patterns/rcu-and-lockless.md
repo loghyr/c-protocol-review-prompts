@@ -169,6 +169,77 @@ and loads, and thread B may use stale data even after seeing the flag set.
 
 ---
 
+## 9. call_rcu Callbacks Must Not Call synchronize_rcu
+
+`call_rcu` callbacks run in the RCU callback thread. Calling
+`synchronize_rcu()` from inside a callback deadlocks: `synchronize_rcu`
+waits for all outstanding callbacks to complete, including the one that
+called it.
+
+```c
+/* WRONG: deadlock */
+static void obj_rcu_free(struct rcu_head *head)
+{
+    struct obj *obj = caa_container_of(head, struct obj, rcu_head);
+    synchronize_rcu();   /* WRONG: waits for this callback to finish */
+    free(obj);
+}
+```
+
+The correct pattern: free directly in the callback (the grace period
+has already elapsed) or schedule further deferred work with another
+`call_rcu`.
+
+```c
+/* CORRECT */
+static void obj_rcu_free(struct rcu_head *head)
+{
+    struct obj *obj = caa_container_of(head, struct obj, rcu_head);
+    free(obj);  /* grace period elapsed; no extra synchronize needed */
+}
+```
+
+**Detection:** Grep for `synchronize_rcu` or `rcu_barrier` inside
+functions that are registered as `call_rcu` callbacks.
+
+---
+
+## 10. Iterator Must Advance Before put() (Hash Table Traversal)
+
+When traversing an RCU-protected lock-free hash table and dropping
+references inside the loop, the iterator must advance to the next node
+BEFORE calling `put()`. The reason: `put()` can reach refcount zero,
+triggering the release callback, which calls `cds_lfht_del` on the
+current node. After deletion, `cds_lfht_next` from the deleted node
+produces undefined behavior.
+
+```c
+/* WRONG: put() may delete node, then next() walks deleted node */
+rcu_read_lock();
+cds_lfht_first(ht, &iter);
+while ((node = cds_lfht_iter_get_node(&iter)) != NULL) {
+    obj = caa_container_of(node, struct obj, ht_node);
+    obj_put(obj);                /* may delete node */
+    cds_lfht_next(ht, &iter);   /* WRONG: iterating from deleted node */
+}
+rcu_read_unlock();
+
+/* CORRECT: advance BEFORE put */
+rcu_read_lock();
+cds_lfht_first(ht, &iter);
+while ((node = cds_lfht_iter_get_node(&iter)) != NULL) {
+    obj = caa_container_of(node, struct obj, ht_node);
+    cds_lfht_next(ht, &iter);   /* advance first */
+    obj_put(obj);               /* now safe to trigger release */
+}
+rcu_read_unlock();
+```
+
+This pattern applies to any loop that drops the creation ref on the
+current entry (reaper threads, shutdown drain, bulk revoke).
+
+---
+
 ## Verification Output Requirements
 
 For any RCU or lock-free issue:
