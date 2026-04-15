@@ -39,6 +39,9 @@ Scan the diff for:
 - Refcount increment/decrement, object lifecycle → load `patterns/ref-counting.md`
 - malloc/free, new/delete, pointer arithmetic, array indexing → load `patterns/memory-safety.md`
 - atomic_t, stdatomic, __atomic builtins, volatile for concurrency → load `patterns/atomics.md`
+- System calls, I/O (read/write/open/close/fsync), library calls with error returns → load `patterns/error-handling.md`
+- clock_gettime, timeouts, timers, leases, sleep, pthread_cond_timedwait → load `patterns/clock-selection.md`
+- task_pause/resume, coroutine suspend, async state transfer → load `patterns/async-state-transfer.md`
 
 ---
 
