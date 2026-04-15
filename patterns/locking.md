@@ -214,6 +214,72 @@ If the patch changes lock granularity (coarse → fine, or fine → coarse):
 
 ---
 
+## 10. Cooperative Thread Cancellation (Stop-Flag Pattern)
+
+Multi-threaded programs that need clean shutdown typically use a shared
+`_Atomic` stop flag: worker threads periodically check the flag and exit
+cooperatively rather than being forcibly killed.
+
+**The invariant:** A worker thread must check the stop flag BEFORE every
+write or mutation — not merely before blocking on a condvar or returning
+from the main loop. An operation that starts after the shutdown signal
+leaves orphaned state that the cleanup path may not handle.
+
+```c
+/* WRONG: check only at the top of the loop */
+void *worker(void *arg)
+{
+    while (!atomic_load_explicit(&g_stop, memory_order_relaxed)) {
+        data = compute();
+        write_to_filesystem(data);   /* proceeds even during shutdown */
+        commit_metadata(data);
+    }
+    return NULL;
+}
+
+/* CORRECT: check before each mutation */
+void *worker(void *arg)
+{
+    while (!atomic_load_explicit(&g_stop, memory_order_relaxed)) {
+        data = compute();
+        if (atomic_load_explicit(&g_stop, memory_order_relaxed))
+            break;
+        write_to_filesystem(data);
+        if (atomic_load_explicit(&g_stop, memory_order_relaxed))
+            break;
+        commit_metadata(data);
+    }
+    return NULL;
+}
+```
+
+**Notification discipline:** Setting the stop flag alone does not wake
+threads blocked in `pthread_cond_wait`, `read()`, `poll()`, or similar.
+The setter must also send a wake-up signal:
+- `pthread_cond_broadcast`: for threads waiting on a condvar.
+- `eventfd` write of 1: for threads blocked in `poll`/`epoll`/`select`.
+- `write` to a pipe/socket: for threads blocked in `read`.
+
+Missing the wake-up causes threads to hang until the next naturally
+occurring event (which may never come), producing a stuck shutdown.
+
+**Memory ordering:** `memory_order_relaxed` is acceptable for reading
+the stop flag in a polling loop — the flag is a hint and the next
+iteration will re-check. The write that sets the stop flag should use
+at least `memory_order_release` so that all preceding writes are visible
+before any thread acts on the stop signal.
+
+**Per-thread state:** Each worker thread must have its own mutable
+state (RNG seed, I/O buffer, error counter). Sharing mutable per-thread
+state across threads without synchronization is a data race even if each
+thread only reads `g_stop` atomically.
+
+**Detection:** Look for write/create/delete/fsync calls inside a loop
+that also checks a stop flag. Verify the stop check occurs BEFORE each
+mutation, not only at the loop top or at blocking points.
+
+---
+
 ## Verification Output Requirements
 
 For any locking issue, produce:
