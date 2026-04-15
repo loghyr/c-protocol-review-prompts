@@ -1,0 +1,15 @@
+# OS artifacts
+.DS_Store
+._*
+Thumbs.db
+
+# Editor artifacts
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Local notes not for repo
+scratch.md
+TODO.local.md

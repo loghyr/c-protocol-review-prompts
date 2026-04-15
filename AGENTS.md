@@ -6,7 +6,7 @@ designed to be usable by any AI agent without project-specific tuning.
 ## Directory Layout
 
 ```
-reviewer/
+c-protocol-review-prompts/
   AGENTS.md               ← this file
   roles.md                ← Planner / Programmer / Reviewer role definitions
   review-core.md          ← Main review protocol (CHANGE-N analysis + tasks)
@@ -16,10 +16,13 @@ reviewer/
     c-cpp-review.md       ← Skill definition (auto-detects C/C++ projects)
   patterns/
     locking.md            ← Lock ordering, ABBA, spinlock, condvar, TOCTOU
-    rcu-and-lockless.md   ← RCU remove-before-free, lock-free correctness
+    rcu-and-lockless.md   ← RCU, lock-free hash tables, call_rcu constraints
     ref-counting.md       ← Get/put balance, use-after-put, error unref
     memory-safety.md      ← Allocator mismatches, overflows, double-free
     atomics.md            ← C11 atomics, memory ordering, data races
+    error-handling.md     ← Return value contracts, errno, cleanup paths
+    async-state-transfer.md ← State machine parking, inbound RPC resume, fencing
+    clock-selection.md    ← CLOCK_REALTIME vs CLOCK_MONOTONIC, abstraction rules
   slash-commands/
     c-review.md           ← /c-review  — invoke the review protocol
     c-debug.md            ← /c-debug   — analyze a crash or stack trace
