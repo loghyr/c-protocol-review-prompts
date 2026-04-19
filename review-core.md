@@ -42,6 +42,7 @@ Scan the diff for:
 - System calls, I/O (read/write/open/close/fsync), library calls with error returns → load `patterns/error-handling.md`
 - clock_gettime, timeouts, timers, leases, sleep, pthread_cond_timedwait → load `patterns/clock-selection.md`
 - task_pause/resume, coroutine suspend, async state transfer → load `patterns/async-state-transfer.md`
+- Extraction refactors (moving code across TUs), backend/platform ports, stub removal, enabling a previously-disabled feature flag, or removing `__attribute__((unused))` / `static` / `#if 0` that had been hiding code from the linker → load `patterns/reachability-change.md`
 
 ---
 
@@ -110,8 +111,11 @@ CHANGE-N: <short description>, <representative line of code>
 
 **Step 0 — Reachability Gate (MANDATORY, before all other Task 2 work):**
 
-Verify the changed code paths are reachable by the workloads or consumers
-described in the commit message. Check:
+The gate is bidirectional. Apply both forward and backward checks.
+
+**Forward — is the NEW code reachable?**  Verify the changed code
+paths are reachable by the workloads or consumers described in the
+commit message. Check:
 - Feature flags and compile-time options that might disable the path.
 - Protocol constraints that prevent execution.
 - Init ordering that might mean the code never runs in practice.
@@ -119,8 +123,28 @@ described in the commit message. Check:
 If the code path cannot execute for the stated use case, report this
 immediately — it is a show-stopper that supersedes detailed analysis.
 
+**Backward — does the change make any OLD code reachable for the first
+time?**  This is critical for extraction refactors, backend/platform
+ports, stub-removal commits, and feature-flag flips. Ask:
+- Does this commit add a caller for a function that previously had
+  none in the active build?
+- Does this commit remove a `-ENOSYS` stub, an `#if 0`, a
+  `__attribute__((unused))`, or a `static` that had been hiding code?
+- Does this commit activate a compile-time-guarded region that the
+  CI has never exercised?
+
+If yes, the pre-existing code in that path is in scope for review.
+It hasn't been exercised by any test suite before this commit; its
+bugs have been dormant. Treat it as if it were new code.
+
+Load `patterns/reachability-change.md` and apply its checklist (§6).
+Record the latent code in scope explicitly:
+
 ```
 REACHABILITY: confirmed
+NEWLY-REACHABLE CODE (in scope):
+  - lib/io/backend_kqueue.c:io_request_accept_op — called from main() with ci=NULL
+  - lib/io/backend_kqueue.c:kqueue_arm_heartbeat_timer — called from io_schedule_heartbeat
 ```
 or
 ```

@@ -137,3 +137,78 @@ NOTE: <component>: <short description>
   the other.
 - When working solo, sequence strictly: finish Planner output → begin Programmer
   work → finish Programmer work → begin Reviewer work. Do not interleave roles.
+
+---
+
+## Plan Review: Reviewer Runs Before Programmer Starts
+
+For non-trivial work (new feature, substantial refactor, platform port,
+protocol change), the Reviewer runs **on the plan document** before the
+Programmer writes any code. This is cheaper than catching design bugs
+post-implementation — the Programmer hasn't invested hours yet, and
+BLOCKERs in the plan can be resolved by amending the plan rather than
+rewriting code.
+
+**When to plan-review:**
+
+- The Planner has produced a written plan (design doc, issue, RFC).
+- The plan proposes: new APIs or ABI, new subsystem, a port, an
+  extraction refactor, a new backend/platform, a new concurrency model,
+  a security boundary change, a wire-format change.
+
+**What the plan review produces:**
+
+Same BLOCKER / WARNING / NOTE output as code review. Severity definitions
+carry over, but the evidence is the plan's claims against the existing
+code:
+
+- BLOCKER: the plan will produce a bug if implemented as written (lock
+  order reversal, UAF, protocol violation, invariant break).
+- WARNING: the plan has under-specified a contract; implementation will
+  need to make a judgment call the plan does not authorize.
+- NOTE: the plan omits an item worth tracking (follow-on PR, test,
+  documentation).
+
+**Plan-review workflow:**
+
+1. Planner writes the plan.
+2. Reviewer (different instance, or same agent in a fresh pass) reviews
+   the plan against the current codebase. Uses the same methodology as
+   code review: read the files the plan touches, verify its assumptions
+   about existing behavior.
+3. Planner produces a plan **addendum** resolving each BLOCKER and
+   WARNING, or explicitly rejects the finding with justification.
+4. Programmer reads the plan AND the addendum before starting code.
+
+**Why the addendum, not a plan rewrite:**
+
+The addendum preserves the history of what was considered and why.
+Future readers (including the same agent in a later session) can see
+which alternatives were weighed. A silently-rewritten plan loses that
+record — and loses the reason a particular design was rejected, which
+is often the most valuable thing in the review artifact.
+
+**Concrete example:**
+
+A plan for a FreeBSD I/O backend port was reviewed before coding
+started. The review found:
+
+- 3 BLOCKERs: buffer-ownership contract across backends unclear;
+  EV_ADD|EV_ONESHOT collision on shared fd; lock-order audit through
+  `io_context_destroy` missing.
+- 5 WARNINGs: TLS probe reachable with NULL ssl_ctx; tail-recursion
+  depth under queue drain; optimization regression; static-callsite
+  audit; single-accept-failure terminal without heartbeat.
+
+The Planner wrote an addendum resolving B1 (buffer contract is
+backend-consistent per `io_context_destroy`'s unconditional
+`free(ic_buffer)`), B2 (gate serializes normal path; TLS path is
+deferred and unreachable), B3 (destroy never takes `rc_mutex` —
+verified by tracing all callers). The Programmer then implemented
+cleanly against the revised plan. None of the BLOCKERs surfaced in
+the final code; several WARNINGs were converted to explicit commit
+messages that documented the precondition.
+
+Without plan review, each BLOCKER would have produced at least one
+throw-away commit during implementation and reviewer iterations. The
+plan-review step cost ~1 hour; it saved roughly a day of code thrash.
