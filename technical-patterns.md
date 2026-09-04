@@ -190,6 +190,26 @@ using `int` rather than `size_t` / `ptrdiff_t`. Check:
 
 ---
 
+## Comments
+
+- A comment states what the code does and the facts a reader cannot derive from
+  reading it. Change history -- what the code used to do, that it moved, when it
+  was fixed, why it is now testable -- belongs in the commit message.
+- Flag comments that narrate the patch: "historically", "this used to", "now
+  that we", "as of this change", or any sentence only meaningful to someone who
+  saw the diff.
+- The test: would this sentence still be true and useful to someone opening the
+  file in five years with no knowledge of the change that added it? If it is
+  only meaningful relative to that change, it is commit-message text.
+- Rationale that survives the change is NOT history. "Ordered before the barrier
+  because the worker would park forever otherwise" is a durable fact about the
+  code; "reordered in this patch because it used to park" is the same fact
+  wearing a diff.
+- Report as maintainability, never as a defect, and never as a reason to
+  withhold approval on its own.
+
+---
+
 ## C++ Exception Safety
 
 If the codebase uses exceptions:
