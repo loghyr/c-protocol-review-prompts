@@ -43,6 +43,7 @@ c-protocol-review-prompts/
     async-state-transfer.md ← State machine parking, inbound RPC resume, fencing
     clock-selection.md    ← CLOCK_REALTIME vs CLOCK_MONOTONIC, abstraction rules
     minimality-and-cost.md  ← New mechanisms, shadow state, cope code, hot-path cost
+    linux-kernel.md         ← Kernel context, LKMM, artifact identity; bridges to masoncl
   slash-commands/
     c-review.md           ← /c-review  — full patch or file review
     c-debug.md            ← /c-debug   — crash and stack trace analysis
@@ -105,6 +106,12 @@ This suite adapts the core methodology from masoncl/review-prompts and removes
 kernel-specific details (Fixes: tags, lore threads, subsystem maintainer guides,
 `WARN_ON`/`BUG_ON` semantics, `rcu_read_lock_bh`). What remains applies equally
 to userspace protocol daemons and kernel modules.
+
+`patterns/linux-kernel.md` bridges back: it routes kernel-specific questions
+to that suite rather than restating it, and covers only the delta -- what
+changes in these patterns when the target is the kernel, plus the evidence
+discipline (artifact identity, and why a hang is evidence) that wire-testing
+a kernel change demands.
 
 Additions not in the upstream repo:
 - Minimality, reuse and hot-path cost review (should this code exist; what

@@ -44,6 +44,7 @@ Scan the diff for:
 - task_pause/resume, coroutine suspend, async state transfer → load `patterns/async-state-transfer.md`
 - Extraction refactors (moving code across TUs), backend/platform ports, stub removal, enabling a previously-disabled feature flag, or removing `__attribute__((unused))` / `static` / `#if 0` that had been hiding code from the linker → load `patterns/reachability-change.md`
 - A new file, type, helper, wrapper, cache, queue, registry, parser, state machine, allocator or config flag; a new fallback/retry/recovery branch; or a change on a per-request, per-I/O, per-packet or under-lock path → load `patterns/minimality-and-cost.md`
+- In-kernel or kernel-adjacent code: a kernel tree, an out-of-tree module, `GFP_`, `spin_lock`, `refcount_t`, `xarray`, `list_head`, `smp_mb`, `Kconfig`, `printk`, a `.ko` → load `patterns/linux-kernel.md`, then the kernel suite it routes to
 
 ---
 
