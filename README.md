@@ -42,6 +42,7 @@ c-protocol-review-prompts/
     error-handling.md     ← Return value contracts, errno, cleanup paths
     async-state-transfer.md ← State machine parking, inbound RPC resume, fencing
     clock-selection.md    ← CLOCK_REALTIME vs CLOCK_MONOTONIC, abstraction rules
+    minimality-and-cost.md  ← New mechanisms, shadow state, cope code, hot-path cost
   slash-commands/
     c-review.md           ← /c-review  — full patch or file review
     c-debug.md            ← /c-debug   — crash and stack trace analysis
@@ -106,6 +107,9 @@ kernel-specific details (Fixes: tags, lore threads, subsystem maintainer guides,
 to userspace protocol daemons and kernel modules.
 
 Additions not in the upstream repo:
+- Minimality, reuse and hot-path cost review (should this code exist; what
+  does it cost per operation), adapted from the engineering-workflow
+  reviewer skill
 - Protocol-specific patterns (async state transfer, clock selection)
 - Lock-free hash table lifecycle (urcu/liburcu patterns)
 - `call_rcu` callback constraints

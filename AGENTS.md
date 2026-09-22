@@ -23,6 +23,7 @@ c-protocol-review-prompts/
     error-handling.md     ← Return value contracts, errno, cleanup paths
     async-state-transfer.md ← State machine parking, inbound RPC resume, fencing
     clock-selection.md    ← CLOCK_REALTIME vs CLOCK_MONOTONIC, abstraction rules
+    minimality-and-cost.md  ← New mechanisms, shadow state, cope code, hot-path cost
   slash-commands/
     c-review.md           ← /c-review  — invoke the review protocol
     c-debug.md            ← /c-debug   — analyze a crash or stack trace

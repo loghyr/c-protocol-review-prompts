@@ -43,6 +43,7 @@ Scan the diff for:
 - clock_gettime, timeouts, timers, leases, sleep, pthread_cond_timedwait → load `patterns/clock-selection.md`
 - task_pause/resume, coroutine suspend, async state transfer → load `patterns/async-state-transfer.md`
 - Extraction refactors (moving code across TUs), backend/platform ports, stub removal, enabling a previously-disabled feature flag, or removing `__attribute__((unused))` / `static` / `#if 0` that had been hiding code from the linker → load `patterns/reachability-change.md`
+- A new file, type, helper, wrapper, cache, queue, registry, parser, state machine, allocator or config flag; a new fallback/retry/recovery branch; or a change on a per-request, per-I/O, per-packet or under-lock path → load `patterns/minimality-and-cost.md`
 
 ---
 

@@ -41,6 +41,7 @@ When asked to review a patch, commit, or PR:
    - Object lifecycle → `patterns/ref-counting.md`
    - Memory operations → `patterns/memory-safety.md`
    - Atomic access → `patterns/atomics.md`
+   - New mechanism, fallback/retry, or hot-path change → `patterns/minimality-and-cost.md`
 3. Run every potential issue through `false-positive-guide.md` before reporting.
 
 ### Crash and Stack Trace Analysis
@@ -80,6 +81,7 @@ responsibilities and follow them exclusively for this session.
 | `refcount_t`, `kref`, `std::shared_ptr`, `ref_get`, `ref_put` | `patterns/ref-counting.md` |
 | `malloc`, `calloc`, `realloc`, `free`, `new`, `delete`, `mmap` | `patterns/memory-safety.md` |
 | `volatile` used with shared data | `patterns/atomics.md` |
+| new `.c`/`.h` file, new `struct` with a lookup table, `retry`, `fallback`, per-request handler | `patterns/minimality-and-cost.md` |
 
 ## Output
 
