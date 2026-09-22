@@ -128,10 +128,12 @@ standard that defines the wire behavior.
  */
 ```
 
-Review history, internal revision numbers, tool names, and reviewer
-dispositions belong in the commit message at most, and usually nowhere.
-Flag them in a diff: they are noise to the maintainer and they date the
-code.
+Review history, internal revision numbers, and reviewer dispositions do
+not belong in source.  Flag them in a diff: they are noise to the
+maintainer and they date the code.  Tool use is different when it
+materially generated the contribution: follow
+`Documentation/process/generated-content.rst` and disclose it in the
+cover letter or changelog, not in an implementation comment.
 
 ---
 
@@ -228,6 +230,140 @@ exercised by any test.
 
 ---
 
+## 8. A Green Command Is Not Necessarily Evidence
+
+Kernel validation is a ladder, not one result:
+
+1. the changed translation unit compiled;
+2. the final built-in image or module linked and passed modpost;
+3. the intended configuration selected the changed implementation;
+4. that artifact was installed and loaded;
+5. the intended test case executed;
+6. the test exercised the predicate or race it claims to cover.
+
+A result proves only the rung it reached.  In particular:
+
+- A KUnit suite that compiled was not necessarily run.  Check the raw
+  output, suite and case names, and the executed test count; a bad filter
+  can select zero tests and still leave an apparently successful command.
+- For lockdep evidence, confirm that lockdep was enabled in the running
+  configuration and that the log does not say the locking correctness
+  validator was turned off.  Absence of a splat alone is not evidence.
+- An empty sparse, Smatch, Coccinelle, sanitizer, or checkpatch log is not
+  a pass until the tool version, exit status, input files and output
+  destination show that the tool actually ran.  Compare base and tip under
+  the same configuration, and rebuild the relevant objects when cached
+  output could hide the changed lines.
+- A fault-injection test must show that the intended injection point fired.
+  Run a negative control with injection disabled, and where practical a
+  deliberately broken control that makes the test fail for the expected
+  reason.
+- A race test needs deterministic handshakes around the contested window.
+  Sleeps, scheduler luck and "the worker had started" do not prove that a
+  waiter was blocked, teardown was waiting, or the target instruction ran.
+  Keep ownership of every test thread and join it before its fixture can be
+  freed.
+
+When a branch cannot be driven on the available host, label it source-only
+analysis.  Do not promote it to runtime evidence because a neighboring case
+passed.  Report the exact command, config, test count and limitations so the
+next reviewer can tell which rung was reached.
+
+---
+
+## 9. Publication, Admission, and Teardown Are One Protocol
+
+A registry or provider is not safe merely because lookup is locked.  Review
+the whole lifetime as one state machine:
+
+1. initialize the object and all failure unwinds before publication;
+2. publish under the registry's exclusion rule;
+3. let each caller acquire a stable object/module/generation reference and
+   an active admission before dropping lookup protection;
+4. refuse new admissions after retirement starts;
+5. unpublish first, then wait for existing admissions and callbacks;
+6. release owned generations and storage only after the drain; and
+7. destroy the anchor only after no waiter can still name it.
+
+Keep ownership references distinct from active-operation admissions.  A
+published object may own a generation, but it must not hold a permanent
+"active admission" that retirement waits to drain.  Likewise, an object
+whose teardown is a per-net exit callback must not keep its own network
+namespace alive until that callback: both patterns create a reference cycle
+that prevents the teardown event needed to release the reference.
+
+Wait primitives carry their own cardinality and lifetime contracts:
+
+- `complete()` satisfies one waiter; use `complete_all()` only when the
+  event is a broadcast and account for future generations of the event;
+- do not `reinit_completion()` while a waiter or signaler can still refer
+  to the old generation;
+- publish the state that satisfies a wait before waking it, with the lock or
+  LKMM ordering that makes the state visible; and
+- the completion or wait queue must outlive every waiter, including timeout,
+  cancellation and error paths.
+
+For teardown tests, prove both halves separately: the fence returns only
+after active work drains, and object destruction itself remains blocked
+until the last owned reference is released.  Fixture cleanup that runs only
+after the test body has already released the worker proves neither.
+
+---
+
+## 10. Tool Disclosure Is Not Authorship
+
+Read the target tree's `Documentation/process/generated-content.rst`.
+Material tool-generated code, tests, changelog text, or problem discovery
+should be disclosed as that document requests, with enough information for
+reviewers to understand what was generated and how it was validated.  The
+human submitter must understand and be able to defend the entire change.
+
+Do not turn a tool or model into a person-shaped trailer.  `Signed-off-by:`
+records the DCO and the real delivery path; `Co-developed-by:` names a human
+co-developer and requires that person's sign-off.  A tool has neither role.
+Also reject duplicated sign-offs and mechanical
+`(cherry picked from commit ...)` debris when a series is being rebuilt for
+upstream review.  The trailer block must describe what actually happened,
+not expose the mechanics of a private patch-replay workspace.
+
+---
+
+## 11. Pin Every Side of a Cross-Tree Claim
+
+Kernel protocol work often has three authorities in different trees: the
+kernel endpoint, a peer or reference implementation, and a specification.
+"Matches the server" is not review evidence until all three are identified
+by exact revision.  Before checking a wire or persistent-format claim,
+record:
+
+- the kernel commit and branch under review;
+- the exact peer/reference commit and the path treated as canonical; and
+- the specification revision and section defining the field or operation.
+
+Do not substitute a nearby clone, an old topic worktree, a generated header
+whose source may have moved, or line numbers from another revision.  Verify
+the checkout's commit before citing it.  If two peer trees disagree, report
+the disagreement as a cross-tree dependency instead of choosing the version
+that makes the patch pass.
+
+For every changed wire shape, independently check:
+
+- operation numbers, discriminants, field order and fixed widths;
+- byte order, opaque padding and alignment;
+- counted-array bounds and checked arithmetic before allocation or walking;
+- what bytes are consumed before a length or discriminator gate fails;
+- reserve-size and page/segment-boundary calculations; and
+- error/status preservation at each decoder and dispatch boundary.
+
+Generated code and native C layouts are not the format definition.  Do not
+derive a wire size from `sizeof(struct ...)` unless the protocol explicitly
+defines that native layout, and never let a successful compile stand in for
+an interoperability run.  When client and peer must change together, name
+the compatibility interval, the flag-day order, and how each mismatched pair
+fails closed.
+
+---
+
 ## Verification Output Requirements
 
 For any kernel finding:
@@ -246,3 +382,10 @@ For any kernel finding:
    test configuration reached it.
 6. Route subsystem-specific questions to masoncl/review-prompts rather
    than inventing a local rule.
+7. For test evidence: state the executed suite/case count and the
+   handshake, injection hit or negative control that proves the intended
+   edge was reached.
+8. For publication or teardown: state what owns each reference, where new
+   admissions close, what drains, and what event permits final destruction.
+9. For cross-tree protocol evidence: state the exact kernel, peer and spec
+   revisions, and distinguish compile/layout checks from a real wire run.

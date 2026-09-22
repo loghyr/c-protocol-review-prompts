@@ -110,8 +110,12 @@ to userspace protocol daemons and kernel modules.
 `patterns/linux-kernel.md` bridges back: it routes kernel-specific questions
 to that suite rather than restating it, and covers only the delta -- what
 changes in these patterns when the target is the kernel, plus the evidence
-discipline (artifact identity, and why a hang is evidence) that wire-testing
-a kernel change demands.
+discipline that wire-testing a kernel change demands: artifact identity,
+why a hang is evidence, proof that a test reached its intended edge,
+publication/teardown lifetime protocols, and the distinction between tool
+disclosure and authorship trailers.  It also requires exact provenance for
+cross-tree wire claims so a stale peer checkout cannot validate the wrong
+protocol shape.
 
 Additions not in the upstream repo:
 - Minimality, reuse and hot-path cost review (should this code exist; what
